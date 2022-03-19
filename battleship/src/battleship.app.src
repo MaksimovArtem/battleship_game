@@ -1,0 +1,11 @@
+{application, battleship,
+ [{description, "Battleship game"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {battleship_app, []}},
+  {applications, [kernel, stdlib]},
+  {env,[]},
+  {modules, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
