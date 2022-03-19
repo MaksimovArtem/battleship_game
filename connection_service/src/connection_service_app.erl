@@ -1,4 +1,4 @@
--module(battleship_app).
+-module(connection_service_app).
 -behaviour(application).
 
 
@@ -6,7 +6,7 @@
 
 
 start(_Type, _Args) ->
-	battleship_sup:start_link().
+	connection_service_sup:start_link().
 
 
 stop(_State) ->

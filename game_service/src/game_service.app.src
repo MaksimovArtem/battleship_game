@@ -1,0 +1,11 @@
+{application, game_service,
+ [{description, "Battleship game itself"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {game_service_app, []}},
+  {applications, [kernel, stdlib]},
+  {env,[]},
+  {modules, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

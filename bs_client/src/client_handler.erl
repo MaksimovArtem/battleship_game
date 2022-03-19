@@ -19,20 +19,21 @@ connect() ->
 	net_adm:ping(?SERVER_NAME),
 	ListenerPid = spawn(?MODULE, waiting_for_invitation, []), %%To be supervised?
 	global:register_name(client_name(), ListenerPid),
-	rpc:call(?SERVER_NAME,battleship,connect,[?CLIENT_NAME]).
+	rpc:call(?SERVER_NAME, connection_service, connect, [?CLIENT_NAME]).
 
 
 get_free_clients() ->
-	rpc:call(?SERVER_NAME,battleship,get_free_clients,[?CLIENT_NAME]).
+	rpc:call(?SERVER_NAME, connection_service, get_free_clients, [?CLIENT_NAME]).
 
 
 send_invitation(TargetNode) ->
-	rpc:call(?SERVER_NAME,battleship,send_invitation,[TargetNode, ?CLIENT_NAME]).
+	rpc:call(?SERVER_NAME, connection_service, send_invitation, [TargetNode, ?CLIENT_NAME]).
 
 
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                   API for game_server
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 set_ship() ->
 	ok.

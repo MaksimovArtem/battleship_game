@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([connect/1, get_free_clients/1, send_invitation/2]).
--export([start_server/0]).
+-export([start_link/0]).
 
 %%gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2]).
@@ -15,7 +15,7 @@
 %%                             API
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-start_server() ->
+start_link() ->
 	gen_server:start_link({global,?MODULE}, ?MODULE, [], []).
 
 
@@ -50,7 +50,6 @@ handle_call({get_free_clients, RequesterNodeName}, _From, State = #state{clients
 
 handle_cast({send_invitation, TargetNode, Requester}, State = #state{active_requests = Requests}) ->
 	IsInitial = is_initial_request(Requests, TargetNode, Requester),
-	io:format("TargetNode, Requester ~p~n~p~n",[TargetNode, Requester]),
 	InvitationText = wanna_play_text(IsInitial, Requester),
 	global:send(get_registered_name(TargetNode), {invitation, InvitationText}),
 	update_state_after_invitation(IsInitial, TargetNode, Requester, State).
