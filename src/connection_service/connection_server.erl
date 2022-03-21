@@ -1,11 +1,11 @@
 -module(connection_server).
 -behaviour(gen_server).
 
--export([connect/1, get_free_clients/1, send_invitation/2]).
+-export([connect/1, get_free_clients/1, send_invitation/2, get_current_opponent/1]).
 -export([start_link/0]).
 
 %%gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2]).
+-export([init/1, handle_call/3, handle_cast/2, handle_continue/2]).
 
 -record(state, {clients = [] :: list(),
 				active_requests = [] ::list(),
@@ -20,17 +20,19 @@ start_link() ->
 
 
 connect(FromNodeName) ->
-	gen_server:call({global, ?MODULE}, {connect, FromNodeName}, 5000).
+	gen_server:call({global, ?MODULE}, {connect, FromNodeName}).
 
 
 get_free_clients(FromNodeName) ->
-	gen_server:call({global, ?MODULE}, {get_free_clients, FromNodeName}, 5000).
+	gen_server:call({global, ?MODULE}, {get_free_clients, FromNodeName}).
+
+
+get_current_opponent(FromNodeName) ->
+	gen_server:call({global, ?MODULE}, {get_current_opponent, FromNodeName}).
 
 
 send_invitation(TargetNode, InitialNode) ->
 	gen_server:cast({global, ?MODULE}, {send_invitation, TargetNode, InitialNode}).
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                     gen_server callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,9 +44,24 @@ init([]) ->
 
 handle_call({connect, FromNodeName}, _From, State = #state{clients=Clients}) ->
 	{reply, ok, State#state{clients = [FromNodeName|Clients]}};
+
 handle_call({get_free_clients, RequesterNodeName}, _From, State = #state{clients=Clients,pairs_in_game=Busy}) ->
 	BusyClients = extract_busy_clients(Busy),
-	{reply, (Clients -- BusyClients) -- [RequesterNodeName], State}.
+	{reply, {ok, (Clients -- BusyClients) -- [RequesterNodeName]}, State};
+
+handle_call({get_current_opponent, FromNodeName}, _From, State = #state{pairs_in_game = InGame}) ->
+	SearchFun =
+	fun Search(_P, []) -> nothing;
+		Search(Player, [{Player, P2}|_]) -> {first,  P2};
+		Search(Player, [{P1, Player}|_]) -> {second, P1};
+		Search(Player, [{_,_}|T]) -> Search(Player, T)
+	end,
+	Reply =
+	case SearchFun(FromNodeName, InGame) of
+		Output = {_MyPos, Player} when is_atom(Player) -> {ok, Output};
+		Other -> {error, Other}
+	end, 
+	{reply, Reply, State}.
 %%--------------------------------------------------------------
 
 
@@ -53,8 +70,13 @@ handle_cast({send_invitation, TargetNode, Requester}, State = #state{active_requ
 	InvitationText = wanna_play_text(IsInitial, Requester),
 	global:send(get_registered_name(TargetNode), {invitation, InvitationText}),
 	update_state_after_invitation(IsInitial, TargetNode, Requester, State).
+%%--------------------------------------------------------------
 
 
+handle_continue({start_new_game, TargetNode, Requester}, State) ->
+	game_service:start_new_game(TargetNode, Requester),
+	{noreply, State}.
+	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                     Internal functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -97,7 +119,8 @@ update_state_after_invitation(true, TargetNode, Requester, State = #state{active
 update_state_after_invitation(false, TargetNode, Requester, State = #state{active_requests = Requests,
 																		   pairs_in_game = InGame}) ->
 	{noreply, State#state{active_requests = Requests -- [{TargetNode, Requester}],
-						  pairs_in_game = [{Requester, TargetNode}|InGame]}}.
+						  pairs_in_game = [{Requester, TargetNode}|InGame]},
+	 					 {continue, {start_new_game,TargetNode, Requester}}}.
 %%--------------------------------------------------------------
 
 

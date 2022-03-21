@@ -1,4 +1,4 @@
--module(game_service_app).
+-module(battleship_app).
 -behaviour(application).
 
 
@@ -6,7 +6,7 @@
 
 
 start(_Type, _Args) ->
-	game_service_sup:start_link().
+	battleship_sup:start_link().
 
 
 stop(_State) ->

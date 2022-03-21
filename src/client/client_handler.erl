@@ -7,8 +7,8 @@
 
 -export([client_name/0]).
 
--define(SERVER_NAME, 'server@192.168.0.103').
--define(CLIENT_NAME, node()).
+-include("include/battleship.hrl").
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -23,17 +23,27 @@ connect() ->
 
 
 get_free_clients() ->
-	rpc:call(?SERVER_NAME, connection_service, get_free_clients, [?CLIENT_NAME]).
+	case rpc:call(?SERVER_NAME, connection_service, get_free_clients, [?CLIENT_NAME]) of
+		{ok, Output} -> Output;
+		_ -> ?RPC_ISSUE
+	end.
 
 
 send_invitation(TargetNode) ->
 	rpc:call(?SERVER_NAME, connection_service, send_invitation, [TargetNode, ?CLIENT_NAME]).
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                   API for game_server
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+get_my_field() ->
+	case rpc:call(?SERVER_NAME, game_service, get_field, [?CLIENT_NAME]) of
+		{error, Text} -> io:format(Text);
+		Field when is_list(Field) ->
+			pretty_print(Field)
+	end.
+
 
 set_ship() ->
 	ok.
@@ -59,3 +69,11 @@ waiting_for_invitation() ->
 		Other ->
 			io:format("Other ~p~n",[Other])
 	end.
+
+
+pretty_print(Field) ->
+	ReducedLetters = string:left(?LETTERS, ?FIELD_SIZE),
+	Matrix = [[Letter|Row] || {Letter, Row} <- lists:zip(ReducedLetters, Field)] ++ 
+			 ["/"|lists:seq(1,?FIELD_SIZE)],
+	PrettyPrint = fun(Row) -> io:format(string:join(Row, " ")) end,
+	PrettyPrint(Matrix).
